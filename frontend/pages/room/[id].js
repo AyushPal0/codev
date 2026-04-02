@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import socket from "../../utils/socket";
 import CodeEditor from "../../components/Editor";
+import Chat from "../../components/Chat";
 
 export default function Room() {
     const router = useRouter();
@@ -25,6 +26,10 @@ export default function Room() {
             setCode(newCode);
         });
 
+        socket.on("ai-response", (data) => {
+            alert(data.suggestion);
+        });
+
         return () => {
             socket.off("init-code");
             socket.off("code-update");
@@ -40,10 +45,29 @@ export default function Room() {
         });
     };
 
+    const getSuggestion = () => {
+        socket.emit("get-ai-suggestion", {
+            code,
+            socketId: socket.id,
+        });
+    };
+
     return (
-        <div>
-            <h2 style={{ textAlign: "center" }}>Room: {id}</h2>
-            <CodeEditor code={code} onChange={handleChange} />
+        <div style={{ display: "flex" }}>
+            <div style={{ flex: 1 }}>
+                <h2 style={{ textAlign: "center" }}>Room: {id}</h2>
+
+                {/* 👇 ADD BUTTON HERE */}
+                <div style={{ textAlign: "center", marginBottom: "10px" }}>
+                    <button onClick={getSuggestion}>
+                        Get AI Suggestion
+                    </button>
+                </div>
+
+                <CodeEditor code={code} onChange={handleChange} />
+            </div>
+
+            <Chat roomId={id} />
         </div>
     );
 }

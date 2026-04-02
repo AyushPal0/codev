@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const axios = require("axios");
 
 const app = express();
 app.use(cors());
@@ -46,6 +47,23 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
+    });
+
+    // CHAT SYSTEM
+    socket.on("send-message", ({ roomId, message }) => {
+        socket.to(roomId).emit("receive-message", message);
+    });
+
+    socket.on("get-ai-suggestion", async ({ code, socketId }) => {
+        try {
+            const res = await axios.post("http://localhost:8000/suggest", {
+                code,
+            });
+
+            io.to(socketId).emit("ai-response", res.data);
+        } catch (err) {
+            console.error(err);
+        }
     });
 });
 
