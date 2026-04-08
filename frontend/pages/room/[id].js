@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import socket from "../../utils/socket";
 import CodeEditor from "../../components/Editor";
 import Chat from "../../components/Chat";
@@ -9,6 +9,8 @@ export default function Room() {
     const { id } = router.query;
 
     const [code, setCode] = useState("");
+    const [suggestion, setSuggestion] = useState("");
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -27,7 +29,8 @@ export default function Room() {
         });
 
         socket.on("ai-response", (data) => {
-            alert(data.suggestion);
+            setSuggestion(data.suggestion);
+            setLoading(false);
         });
 
         return () => {
@@ -36,6 +39,15 @@ export default function Room() {
         };
     }, [id]);
 
+    const autoCompleteTimer = useRef(null);
+
+    const triggerAutoComplete = (value) => {
+        if (autoCompleteTimer.current) clearTimeout(autoCompleteTimer.current);
+        autoCompleteTimer.current = setTimeout(() => {
+            if (value.trim()) getSuggestion();
+        }, 1500);
+    };
+
     const handleChange = (value) => {
         setCode(value);
 
@@ -43,9 +55,15 @@ export default function Room() {
             roomId: id,
             code: value,
         });
+
+        // 👇 Trigger AI after typing
+        triggerAutoComplete(value);
     };
 
     const getSuggestion = () => {
+        setLoading(true);
+        setSuggestion("");
+
         socket.emit("get-ai-suggestion", {
             code,
             socketId: socket.id,
@@ -57,13 +75,36 @@ export default function Room() {
             <div style={{ flex: 1 }}>
                 <h2 style={{ textAlign: "center" }}>Room: {id}</h2>
 
-                {/* 👇 ADD BUTTON HERE */}
+                {/* 🔘 BUTTON */}
                 <div style={{ textAlign: "center", marginBottom: "10px" }}>
                     <button onClick={getSuggestion}>
-                        Get AI Suggestion
+                        {loading ? "⏳ Thinking..." : "Get AI Suggestion"}
                     </button>
                 </div>
 
+                {/* 🧠 LOADING TEXT */}
+                {loading && (
+                    <p style={{ textAlign: "center", color: "yellow" }}>
+                        AI is analyzing your code...
+                    </p>
+                )}
+
+                {/* 💡 THIS IS STEP 4 — ADD HERE */}
+                {suggestion && (
+                    <div
+                        style={{
+                            background: "#222",
+                            color: "#0f0",
+                            padding: "10px",
+                            margin: "10px",
+                            borderRadius: "5px",
+                        }}
+                    >
+                        💡 AI Suggestion: {suggestion}
+                    </div>
+                )}
+
+                {/* 💻 EDITOR */}
                 <CodeEditor code={code} onChange={handleChange} />
             </div>
 
